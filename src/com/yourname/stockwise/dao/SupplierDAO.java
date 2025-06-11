@@ -11,17 +11,39 @@ import java.util.List;
 
 import com.yourname.stockwise.model.Supplier;
 
+/**
+ * Data Access Object (DAO) class for managing supplier data in the StockWise application.
+ * It handles database operations such as create, read, update, and delete (CRUD)
+ * for the Supplier entity.
+ * 
+ * Uses an in-memory list as a cache to reduce repetitive database access.
+ * 
+ * Environment variable STOCKWISE_DB_PASSWORD must be set to connect to the database.
+ * 
+ * @author L Mahamba
+ * @version 1.0
+ */
 public class SupplierDAO {
 
+    // Database connection parameters
     private static final String DB_URL = "jdbc:mysql://localhost:3306/stockwise";
     private static final String DB_USER = "root";
-    private static final String DB_PASSWORD = "Luyolo@041125"; // Replace with your actual password
+    private static final String DB_PASSWORD = System.getenv("STOCKWISE_DB_PASSWORD");
 
     // In-memory supplier cache
     private final List<Supplier> suppliers = new ArrayList<>();
 
+    /**
+     * Constructs a SupplierDAO and initializes the suppliers table if it doesn't exist.
+     * Also loads existing suppliers from the database into memory.
+     */
     public SupplierDAO() {
-        // Create suppliers table if it doesn't exist
+        String password = System.getenv("STOCKWISE_DB_PASSWORD");
+        if (password == null) {
+            throw new RuntimeException("DB password environment variable not set");
+        }
+
+        // SQL to create suppliers table if it does not exist
         String sql = "CREATE TABLE IF NOT EXISTS suppliers (" +
                      "id VARCHAR(50) PRIMARY KEY, " +
                      "name VARCHAR(255), " +
@@ -29,20 +51,20 @@ public class SupplierDAO {
                      "phone VARCHAR(50), " +
                      "address VARCHAR(255))";
 
-        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, password);
              Statement stmt = conn.createStatement()) {
 
-            stmt.execute(sql); // Ensure the table exists
-            loadSuppliersFromDB(); // Load existing suppliers from DB into memory
+            stmt.execute(sql); // Create table if not exists
+            loadSuppliersFromDB(); // Load existing suppliers into memory
 
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-
-
-    // Load all suppliers from the database into memory
+    /**
+     * Loads all suppliers from the database and updates the in-memory list.
+     */
     private void loadSuppliersFromDB() {
         suppliers.clear();
         String sql = "SELECT * FROM suppliers";
@@ -65,7 +87,13 @@ public class SupplierDAO {
             e.printStackTrace();
         }
     }
-    // Add a supplier to the database and memory
+
+    /**
+     * Adds a supplier to the database and in-memory list.
+     *
+     * @param supplier the Supplier object to add
+     * @return true if the supplier was added successfully, false otherwise
+     */
     public boolean addSupplier(Supplier supplier) {
         String sql = "INSERT INTO suppliers (id, name, email, phone, address) VALUES (?, ?, ?, ?, ?)";
 
@@ -80,7 +108,7 @@ public class SupplierDAO {
 
             int rows = pstmt.executeUpdate();
             if (rows > 0) {
-                suppliers.add(supplier); // Add to in-memory list
+                suppliers.add(supplier); // Add to in-memory cache
                 System.out.println("Supplier added to DB: " + supplier.getId());
                 return true;
             } else {
@@ -95,13 +123,22 @@ public class SupplierDAO {
         return false;
     }
 
-    // Return all suppliers (reloads from DB to ensure freshness)
+    /**
+     * Retrieves a list of all suppliers currently in memory.
+     * Note: To get the latest from DB, refresh the list manually.
+     *
+     * @return a list of all Supplier objects
+     */
     public List<Supplier> getAllSuppliers() {
-        //loadSuppliersFromDB(); // Always refresh from DB
         return new ArrayList<>(suppliers);
     }
 
-    // Get a supplier by ID from in-memory cache
+    /**
+     * Retrieves a supplier by ID from the in-memory list.
+     *
+     * @param id the supplier ID
+     * @return the Supplier object, or null if not found
+     */
     public Supplier getSupplierById(String id) {
         for (Supplier s : suppliers) {
             if (s.getId().equals(id)) {
@@ -111,7 +148,12 @@ public class SupplierDAO {
         return null;
     }
 
-    // Update supplier in DB and memory
+    /**
+     * Updates an existing supplier in the database and in-memory list.
+     *
+     * @param supplier the Supplier object with updated details
+     * @return true if update was successful, false otherwise
+     */
     public boolean updateSupplier(Supplier supplier) {
         String sql = "UPDATE suppliers SET name=?, email=?, phone=?, address=? WHERE id=?";
 
@@ -144,7 +186,12 @@ public class SupplierDAO {
         return false;
     }
 
-    // Delete supplier from DB and memory
+    /**
+     * Deletes a supplier from the database and removes it from the in-memory list.
+     *
+     * @param id the supplier ID
+     * @return true if the supplier was successfully deleted, false otherwise
+     */
     public boolean deleteSupplier(String id) {
         String sql = "DELETE FROM suppliers WHERE id = ?";
 

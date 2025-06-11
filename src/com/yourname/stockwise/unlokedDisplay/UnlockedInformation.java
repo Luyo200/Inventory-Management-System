@@ -1,24 +1,19 @@
-package com.yourname.stockwise.app;
+package com.yourname.stockwise.unlokedDisplay;
 
 import java.util.List;
 
-import com.yourname.stockwise.controller.ProductController;
-import com.yourname.stockwise.controller.SupplierController;
-import com.yourname.stockwise.controller.TransactionController;
 import com.yourname.stockwise.dao.ProductDAO;
 import com.yourname.stockwise.dao.SupplierDAO;
 import com.yourname.stockwise.dao.TransactionDAO;
 import com.yourname.stockwise.model.Product;
 import com.yourname.stockwise.model.Supplier;
 import com.yourname.stockwise.model.Transaction;
-import com.yourname.stockwise.security.UserManagementView;
+import com.yourname.stockwise.security.Login;
 import com.yourname.stockwise.style.HomePage;
-import com.yourname.stockwise.util.AlertHelper;
 import com.yourname.stockwise.visitor.InventoryReportVisitor;
 import com.yourname.stockwise.visitor.LowStockAlertVisitor;
 import com.yourname.stockwise.visitor.StockValueCalculatorVisitor;
 
-import javafx.application.Application;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
@@ -28,9 +23,7 @@ import javafx.event.EventHandler;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
@@ -85,41 +78,9 @@ import javafx.stage.Stage;
  * @version Inventory
  */
 
-public class InventoryApp extends Application {
-
-	/**
-	 * Launches the JavaFX application.
-	 *
-	 * @param args the command-line arguments (not used)
-	 */
-
-	
+public class UnlockedInformation {
 	private HomePage home = new HomePage();
-	private UserManagementView n = new UserManagementView();
-
-	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-		Application.launch(args);
-		
-
-		
-	}
-
-	/**
-	 * Initializes and starts the JavaFX application.
-	 *
-	 * @param primaryStage the primary stage for this application
-	 * @throws Exception if any exception occurs during application start
-	 */
-
-	@Override
-	public void start(Stage primaryStage) throws Exception {
-
-		//showDashboard(primaryStage);
-		HomePage home = new HomePage();
-		home.showHomePage(primaryStage); // Set homepage on launch
-
-	}
+	private Login l = new Login();
 
 	/**
 	 * Displays a table view of all products in inventory.
@@ -128,7 +89,7 @@ public class InventoryApp extends Application {
 	 */
 
 	public void showProductTable(Stage stage) {
-		
+
 		
 		// DAO and data fetch
 		ProductDAO dao = new ProductDAO();
@@ -183,19 +144,8 @@ public class InventoryApp extends Application {
 
 		// Buttons with styling
 		Button backBtn = createStyledButton("⬅ Back", e -> showDashboard(stage));
-		Button addProductBtn = createStyledButton("➕ Add Product", e -> {
-			ProductController pc = new ProductController();
-			pc.showAddProductForm(stage);
-		});
-		Button deleteBtn = createStyledButton("🗑 Delete", e -> {
-			Product selected = tableView.getSelectionModel().getSelectedItem();
-			if (selected != null) {
-				dao.deleteProduct(selected.getId());
-				productList.remove(selected);
-			}
-		});
 
-		HBox buttonBar = new HBox(20, backBtn, addProductBtn, deleteBtn);
+		HBox buttonBar = new HBox(20, backBtn);
 		buttonBar.setAlignment(Pos.CENTER);
 		buttonBar.setPadding(new Insets(10, 0, 0, 0));
 
@@ -225,14 +175,15 @@ public class InventoryApp extends Application {
 	 */
 	public void showDashboard(Stage stage) {
 		// Description text
-		Text descriptionText = new Text("Manage your inventory efficiently with quick access to products, reports, suppliers, and transactions. Navigate using the options below.");
+		Text descriptionText = new Text(
+				"Manage your inventory efficiently with quick access to products, reports, suppliers, and transactions. Navigate using the options below.");
 		descriptionText.setWrappingWidth(600);
 		descriptionText.setTextAlignment(TextAlignment.CENTER);
 		descriptionText.setStyle("""
-		        -fx-font-size: 14px;
-		        -fx-fill: #333333;
-		        -fx-font-family: 'Segoe UI', sans-serif;
-		    """);
+				    -fx-font-size: 14px;
+				    -fx-fill: #333333;
+				    -fx-font-family: 'Segoe UI', sans-serif;
+				""");
 		// Styled buttons
 		Button viewProductsBtn = createStyledButton("📦 View Products", e -> showProductTable(stage));
 		Button lowStockReportBtn = createStyledButton("⚠️ Low Stock Report", e -> showLowStockReport(stage));
@@ -241,48 +192,32 @@ public class InventoryApp extends Application {
 		Button viewSuppliersBtn = createStyledButton("🏭 View Suppliers", e -> showSuppliers(stage));
 		Button viewReportBtn = createStyledButton("📊 View Inventory Report", e -> showInventoryReport(stage));
 		Button backBtn = createStyledButton("🔙 Logout", e -> home.showHomePage(stage));
-		Button b = createStyledButton("View User Details", e-> n.show(stage));
-       
+
 		// FlowPane for flexible layout with wrapping
 		FlowPane flowPane = new FlowPane();
 		flowPane.setHgap(20);
 		flowPane.setVgap(20);
-		
 		flowPane.setPadding(new Insets(25));
 		flowPane.setAlignment(Pos.CENTER);
-		flowPane.setPrefWrapLength(600);  // Width at which buttons wrap to next line
+		flowPane.setPrefWrapLength(600); // Width at which buttons wrap to next line
 
 		// Add buttons to FlowPane
-		flowPane.getChildren().addAll(
-		    viewProductsBtn,
-		    lowStockReportBtn,
-		    calcStockValueBtn,
-		    viewSuppliersBtn,
-		    showTransactionsBtn,
-		    viewReportBtn,
-		    b
-		);
+		flowPane.getChildren().addAll(viewProductsBtn, lowStockReportBtn, calcStockValueBtn, viewSuppliersBtn,
+				showTransactionsBtn, viewReportBtn);
 
 		// Stylish VBox container (card look)
 		VBox optionCard = new VBox(25);
 		optionCard.setAlignment(Pos.CENTER);
 		optionCard.setPadding(new Insets(30));
 		optionCard.setStyle("""
-		        -fx-background-color: white;
-		        -fx-border-color: #007acc;
-		        -fx-border-width: 2;
-		        -fx-border-radius: 20;
-		        -fx-background-radius: 20;
-		        -fx-effect: dropshadow(two-pass-box, rgba(0,0,0,0.2), 10, 0, 5, 5);
-		    """);
-         b.setStyle("""
- 		        -fx-background-color: white;
- 		        -fx-border-color: #007acc;
- 		        -fx-border-width: 2;
- 		        -fx-border-radius: 20;
- 		        -fx-background-radius: 20;
- 		        -fx-effect: dropshadow(two-pass-box, rgba(0,0,0,0.2), 10, 0, 5, 5);
- 		    """);
+				    -fx-background-color: white;
+				    -fx-border-color: #007acc;
+				    -fx-border-width: 2;
+				    -fx-border-radius: 20;
+				    -fx-background-radius: 20;
+				    -fx-effect: dropshadow(two-pass-box, rgba(0,0,0,0.2), 10, 0, 5, 5);
+				""");
+
 		Label dashboardLabel = new Label("📁 Dashboard Options");
 		dashboardLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #007acc;");
 		optionCard.getChildren().addAll(dashboardLabel, flowPane);
@@ -297,12 +232,12 @@ public class InventoryApp extends Application {
 		backPane.setPadding(new Insets(20, 0, 0, 0));
 
 		// Main layout
-		VBox root = new VBox(40,descriptionText, header, optionCard, backPane );
+		VBox root = new VBox(40, descriptionText, header, optionCard, backPane);
 		root.setAlignment(Pos.TOP_CENTER);
 		root.setPadding(new Insets(40));
 		root.setStyle("""
-		        -fx-background-color: linear-gradient(to bottom, #e0eafc, #cfdef3);
-		    """);
+				    -fx-background-color: linear-gradient(to bottom, #e0eafc, #cfdef3);
+				""");
 
 		// ScrollPane in case of smaller screens
 		ScrollPane scrollPane = new ScrollPane(root);
@@ -589,93 +524,80 @@ public class InventoryApp extends Application {
 	 */
 
 	public void showLowStockReport(Stage stage) {
-	    // Load all products from DB
-	    ProductDAO productDAO = new ProductDAO();
-	    List<Product> allProducts = productDAO.getAllProducts();
+		// Load all products from DB
+		ProductDAO productDAO = new ProductDAO();
+		List<Product> allProducts = productDAO.getAllProducts();
 
-	    // Use visitor to find products below threshold
-	    LowStockAlertVisitor visitor = new LowStockAlertVisitor();
-	    allProducts.forEach(p -> p.accept(visitor));
-	    List<Product> lowStockList = visitor.getLowStockProducts();
+		// Use visitor to find products below threshold
+		LowStockAlertVisitor visitor = new LowStockAlertVisitor();
+		allProducts.forEach(p -> p.accept(visitor));
+		List<Product> lowStockList = visitor.getLowStockProducts();
 
-	    ObservableList<Product> lowStockProducts = FXCollections.observableArrayList(lowStockList);
+		ObservableList<Product> lowStockProducts = FXCollections.observableArrayList(lowStockList);
 
-	    // ===== Header =====
-	    Label header = new Label("📦 Low Stock Report");
-	    header.setFont(Font.font("Arial", FontWeight.BOLD, 28));
-	    header.setTextFill(Color.web("#2c3e50"));
-	    header.setAlignment(Pos.CENTER);
-	    header.setMaxWidth(Double.MAX_VALUE);
+		// ===== Header =====
+		Label header = new Label("📦 Low Stock Report");
+		header.setFont(Font.font("Arial", FontWeight.BOLD, 28));
+		header.setTextFill(Color.web("#2c3e50"));
+		header.setAlignment(Pos.CENTER);
+		header.setMaxWidth(Double.MAX_VALUE);
 
-	    // ===== TableView =====
-	    TableView<Product> tableView = new TableView<>(lowStockProducts);
-	    tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-	    tableView.setPlaceholder(new Label("✔ All products are above threshold."));
+		// ===== TableView =====
+		TableView<Product> tableView = new TableView<>(lowStockProducts);
+		tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+		tableView.setPlaceholder(new Label("✔ All products are above threshold."));
 
-	    TableColumn<Product, String> nameCol = new TableColumn<>("Product Name");
-	    nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
+		TableColumn<Product, String> nameCol = new TableColumn<>("Product Name");
+		nameCol.setCellValueFactory(new PropertyValueFactory<>("name"));
 
-	    TableColumn<Product, Integer> qtyCol = new TableColumn<>("Quantity");
-	    qtyCol.setCellValueFactory(new PropertyValueFactory<>("quantity"));
+		TableColumn<Product, Integer> qtyCol = new TableColumn<>("Quantity");
+		qtyCol.setCellValueFactory(new PropertyValueFactory<>("quantity"));
 
-	    TableColumn<Product, Integer> thresholdCol = new TableColumn<>("Threshold");
-	    thresholdCol.setCellValueFactory(new PropertyValueFactory<>("threshold"));
+		TableColumn<Product, Integer> thresholdCol = new TableColumn<>("Threshold");
+		thresholdCol.setCellValueFactory(new PropertyValueFactory<>("threshold"));
 
-	    nameCol.setStyle("-fx-alignment: CENTER-LEFT;");
-	    qtyCol.setStyle("-fx-alignment: CENTER;");
-	    thresholdCol.setStyle("-fx-alignment: CENTER;");
+		nameCol.setStyle("-fx-alignment: CENTER-LEFT;");
+		qtyCol.setStyle("-fx-alignment: CENTER;");
+		thresholdCol.setStyle("-fx-alignment: CENTER;");
 
-	    tableView.getColumns().addAll(nameCol, qtyCol, thresholdCol);
-	    tableView.setStyle("-fx-font-size: 14px;");
+		tableView.getColumns().addAll(nameCol, qtyCol, thresholdCol);
+		tableView.setStyle("-fx-font-size: 14px;");
 
-	    // ===== Back Button =====
-	    Button backBtn = new Button("⬅ Back");
-	    backBtn.setStyle("-fx-background-color: #3498db; "
-	            + "-fx-text-fill: white; "
-	            + "-fx-font-weight: bold; "
-	            + "-fx-background-radius: 8; "
-	            + "-fx-padding: 8 16 8 16; "
-	            + "-fx-cursor: hand;");
-	    backBtn.setOnMouseEntered(e -> backBtn.setStyle("-fx-background-color: #2980b9; "
-	            + "-fx-text-fill: white; "
-	            + "-fx-font-weight: bold; "
-	            + "-fx-background-radius: 8; "
-	            + "-fx-padding: 8 16 8 16; "
-	            + "-fx-cursor: hand;"));
-	    backBtn.setOnMouseExited(e -> backBtn.setStyle("-fx-background-color: #3498db; "
-	            + "-fx-text-fill: white; "
-	            + "-fx-font-weight: bold; "
-	            + "-fx-background-radius: 8; "
-	            + "-fx-padding: 8 16 8 16; "
-	            + "-fx-cursor: hand;"));
-	    backBtn.setOnAction(e -> showDashboard(stage));
+		// ===== Back Button =====
+		Button backBtn = new Button("⬅ Back");
+		backBtn.setStyle("-fx-background-color: #3498db; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
+				+ "-fx-background-radius: 8; " + "-fx-padding: 8 16 8 16; " + "-fx-cursor: hand;");
+		backBtn.setOnMouseEntered(e -> backBtn
+				.setStyle("-fx-background-color: #2980b9; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
+						+ "-fx-background-radius: 8; " + "-fx-padding: 8 16 8 16; " + "-fx-cursor: hand;"));
+		backBtn.setOnMouseExited(e -> backBtn
+				.setStyle("-fx-background-color: #3498db; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
+						+ "-fx-background-radius: 8; " + "-fx-padding: 8 16 8 16; " + "-fx-cursor: hand;"));
+		backBtn.setOnAction(e -> showDashboard(stage));
 
-	    HBox buttonBox = new HBox(backBtn);
-	    buttonBox.setAlignment(Pos.CENTER_RIGHT);
-	    buttonBox.setPadding(new Insets(10, 0, 0, 0));
+		HBox buttonBox = new HBox(backBtn);
+		buttonBox.setAlignment(Pos.CENTER_RIGHT);
+		buttonBox.setPadding(new Insets(10, 0, 0, 0));
 
-	    // ===== Center Panel =====
-	    VBox centerBox = new VBox(15, tableView, buttonBox);
-	    centerBox.setPadding(new Insets(20));
-	    centerBox.setAlignment(Pos.CENTER);
+		// ===== Center Panel =====
+		VBox centerBox = new VBox(15, tableView, buttonBox);
+		centerBox.setPadding(new Insets(20));
+		centerBox.setAlignment(Pos.CENTER);
 
-	    // ===== Root Layout =====
-	    BorderPane root = new BorderPane();
-	    root.setTop(header);
-	    BorderPane.setAlignment(header, Pos.CENTER);
-	    root.setCenter(centerBox);
-	    root.setPadding(new Insets(30));
-	    root.setStyle("-fx-background-color: linear-gradient(to bottom right, #eaf6ff, #ffffff); "
-	            + "-fx-background-radius: 15;");
+		// ===== Root Layout =====
+		BorderPane root = new BorderPane();
+		root.setTop(header);
+		BorderPane.setAlignment(header, Pos.CENTER);
+		root.setCenter(centerBox);
+		root.setPadding(new Insets(30));
+		root.setStyle("-fx-background-color: linear-gradient(to bottom right, #eaf6ff, #ffffff); "
+				+ "-fx-background-radius: 15;");
 
-	    Scene scene = new Scene(root, 700, 500);
-	    stage.setScene(scene);
-	    stage.setTitle("Low Stock Report");
-	    stage.show();
+		Scene scene = new Scene(root, 700, 500);
+		stage.setScene(scene);
+		stage.setTitle("Low Stock Report");
+		stage.show();
 	}
-
-
-
 
 	/**
 	 * Displays the total inventory value on the given JavaFX stage.
@@ -740,78 +662,14 @@ public class InventoryApp extends Application {
 		TableColumn<Supplier, String> addressCol = new TableColumn<>("Address");
 		addressCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getAddress()));
 
-		// Delete button column
-		TableColumn<Supplier, Void> deleteCol = new TableColumn<>("Delete");
-		deleteCol.setMaxWidth(100);
-		deleteCol.setStyle("-fx-alignment: CENTER;");
-
-		deleteCol.setCellFactory(col -> new TableCell<>() {
-			private final Button deleteButton = new Button("Delete");
-
-			{
-				deleteButton.setStyle(
-						"-fx-background-color: #e74c3c; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-								+ "-fx-cursor: hand; " + "-fx-padding: 5 10 5 10; " + "-fx-background-radius: 5;");
-
-				deleteButton.setOnMouseEntered(e -> deleteButton.setStyle(
-						"-fx-background-color: #c0392b; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-								+ "-fx-cursor: hand; " + "-fx-padding: 5 10 5 10; " + "-fx-background-radius: 5;"));
-
-				deleteButton.setOnMouseExited(e -> deleteButton.setStyle(
-						"-fx-background-color: #e74c3c; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-								+ "-fx-cursor: hand; " + "-fx-padding: 5 10 5 10; " + "-fx-background-radius: 5;"));
-
-				deleteButton.setOnAction(e -> {
-					Supplier supplier = getTableView().getItems().get(getIndex());
-
-					// Confirm before deleting
-					Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-					alert.setTitle("Confirm Delete");
-					alert.setHeaderText(null);
-					alert.setContentText("Are you sure you want to delete supplier: " + supplier.getName() + "?");
-
-					alert.showAndWait().ifPresent(response -> {
-						if (response == ButtonType.OK) {
-							boolean success = supplierDAO.deleteSupplier(supplier.getId());
-							if (success) {
-								getTableView().getItems().remove(supplier);
-							} else {
-								// Show error alert if delete failed
-								Alert errorAlert = new Alert(Alert.AlertType.ERROR);
-								errorAlert.setTitle("Delete Failed");
-								errorAlert.setHeaderText(null);
-								errorAlert.setContentText("Failed to delete supplier. Try again.");
-								errorAlert.showAndWait();
-							}
-						}
-					});
-				});
-			}
-
-			@Override
-			protected void updateItem(Void item, boolean empty) {
-				super.updateItem(item, empty);
-				if (empty) {
-					setGraphic(null);
-				} else {
-					setGraphic(deleteButton);
-				}
-			}
-		});
-
 		// Add all columns including delete button column
-		tableView.getColumns().addAll(idCol, nameCol, emailCol, phoneCol, addressCol, deleteCol);
+		tableView.getColumns().addAll(idCol, nameCol, emailCol, phoneCol, addressCol);
 
 		tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
 		// Back button
 		Button backBtn = new Button("Back");
 		backBtn.setOnAction(e -> showDashboard(stage));
-
-		// Add Supplier button
-		Button addSupplierBtn = new Button("Add Supplier");
-		SupplierController supplierController = new SupplierController();
-		addSupplierBtn.setOnAction(e -> supplierController.showAddSupplierForm(stage));
 
 		// Refresh button
 		Button refreshBtn = new Button("Refresh");
@@ -821,7 +679,7 @@ public class InventoryApp extends Application {
 		});
 
 		// Buttons layout
-		HBox buttons = new HBox(10, backBtn, addSupplierBtn, refreshBtn);
+		HBox buttons = new HBox(10, backBtn, refreshBtn);
 		buttons.setPadding(new Insets(10));
 		buttons.setAlignment(Pos.CENTER_RIGHT);
 
@@ -872,50 +730,7 @@ public class InventoryApp extends Application {
 		TableColumn<Transaction, String> dateCol = new TableColumn<>("Date");
 		dateCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getTimestamp().toString()));
 
-		// Delete Button column
-		TableColumn<Transaction, Void> deleteCol = new TableColumn<>("Delete");
-		deleteCol.setMaxWidth(100);
-		deleteCol.setStyle("-fx-alignment: CENTER;");
-
-		deleteCol.setCellFactory(col -> new TableCell<>() {
-			private final Button deleteButton = new Button("Delete");
-
-			{
-				deleteButton.setStyle(
-						"-fx-background-color: #e74c3c; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-								+ "-fx-cursor: hand; " + "-fx-padding: 5 10 5 10; " + "-fx-background-radius: 5;");
-
-				deleteButton.setOnMouseEntered(e -> deleteButton.setStyle(
-						"-fx-background-color: #c0392b; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-								+ "-fx-cursor: hand; " + "-fx-padding: 5 10 5 10; " + "-fx-background-radius: 5;"));
-
-				deleteButton.setOnMouseExited(e -> deleteButton.setStyle(
-						"-fx-background-color: #e74c3c; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-								+ "-fx-cursor: hand; " + "-fx-padding: 5 10 5 10; " + "-fx-background-radius: 5;"));
-
-				deleteButton.setOnAction(e -> {
-					Transaction transaction = getTableView().getItems().get(getIndex());
-					boolean confirmed = AlertHelper.showConfirmation("Confirm Delete",
-							"Are you sure you want to delete transaction " + transaction.getId() + "?");
-					if (confirmed) {
-						transactionDAO.deleteTransaction(transaction.getId());
-						transactionList.remove(transaction);
-					}
-				});
-			}
-
-			@Override
-			protected void updateItem(Void item, boolean empty) {
-				super.updateItem(item, empty);
-				if (empty) {
-					setGraphic(null);
-				} else {
-					setGraphic(deleteButton);
-				}
-			}
-		});
-
-		tableView.getColumns().addAll(idCol, productCol, typeCol, qtyCol, dateCol, deleteCol);
+		tableView.getColumns().addAll(idCol, productCol, typeCol, qtyCol, dateCol);
 
 		Button backBtn = new Button("Back");
 		backBtn.setStyle("-fx-background-color: #3498db; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
@@ -929,20 +744,7 @@ public class InventoryApp extends Application {
 
 		backBtn.setOnAction(e -> showDashboard(stage));
 
-		Button addTransaction = new Button("Add Transaction");
-		addTransaction.setStyle("-fx-background-color: #27ae60; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-				+ "-fx-padding: 8 20 8 20; " + "-fx-background-radius: 5; " + "-fx-cursor: hand;");
-		addTransaction.setOnMouseEntered(e -> addTransaction
-				.setStyle("-fx-background-color: #1e8449; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-						+ "-fx-padding: 8 20 8 20; " + "-fx-background-radius: 5; " + "-fx-cursor: hand;"));
-		addTransaction.setOnMouseExited(e -> addTransaction
-				.setStyle("-fx-background-color: #27ae60; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-						+ "-fx-padding: 8 20 8 20; " + "-fx-background-radius: 5; " + "-fx-cursor: hand;"));
-
-		TransactionController c = new TransactionController();
-		addTransaction.setOnAction(e -> c.showAddTransactionForm(stage));
-
-		HBox buttonBox = new HBox(10, backBtn, addTransaction);
+		HBox buttonBox = new HBox(10, backBtn);
 		buttonBox.setPadding(new Insets(10));
 		buttonBox.setAlignment(Pos.CENTER_RIGHT);
 
@@ -952,7 +754,7 @@ public class InventoryApp extends Application {
 
 		stage.setScene(new Scene(root, 750, 450));
 	}
-   
+
 	/**
 	 * Clears the text fields provided.
 	 *

@@ -9,14 +9,36 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Data Access Object (DAO) class for managing transactions in the StockWise application.
+ * It handles CRUD operations related to Transaction entities and maintains referential integrity 
+ * with the Product table.
+ * 
+ * Requires the environment variable STOCKWISE_DB_PASSWORD for database authentication.
+ * 
+ * @author L Mahamba
+ * @version 1.0
+ */
 public class TransactionDAO {
 
+    // Database connection constants
     private static final String DB_URL = "jdbc:mysql://localhost:3306/stockwise?useSSL=false&serverTimezone=UTC";
     private static final String DB_USER = "root";
-    private static final String DB_PASSWORD = "Luyolo@041125";  // <-- Change this to your actual password
+    private static final String DB_PASSWORD = System.getenv("STOCKWISE_DB_PASSWORD");
 
+    /**
+     * Constructor for TransactionDAO.
+     * Ensures the "transactions" table exists in the database, creating it if necessary.
+     * The transactions table enforces a foreign key constraint on products.id.
+     * Throws a RuntimeException if the DB password environment variable is not set.
+     */
     public TransactionDAO() {
-        // Create transactions table if not exists
+        String password = System.getenv("STOCKWISE_DB_PASSWORD");
+        if (password == null) {
+            throw new RuntimeException("DB password environment variable not set");
+        }
+        final String DB_PASSWORD = password;
+
         String sql = "CREATE TABLE IF NOT EXISTS transactions (" +
                 "id VARCHAR(50) PRIMARY KEY, " +
                 "product_id VARCHAR(50), " +
@@ -25,6 +47,7 @@ public class TransactionDAO {
                 "timestamp TIMESTAMP, " +
                 "FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE ON UPDATE CASCADE" +
                 ")";
+
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
              Statement stmt = conn.createStatement()) {
             stmt.execute(sql);
@@ -33,8 +56,15 @@ public class TransactionDAO {
         }
     }
 
+    /**
+     * Inserts a new transaction record into the database.
+     *
+     * @param transaction The Transaction object to add
+     * @return true if the insertion was successful, false otherwise
+     */
     public boolean addTransaction(Transaction transaction) {
         String sql = "INSERT INTO transactions (id, product_id, type, quantity, timestamp) VALUES (?, ?, ?, ?, ?)";
+
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -52,6 +82,11 @@ public class TransactionDAO {
         }
     }
 
+    /**
+     * Retrieves all transactions from the database.
+     *
+     * @return List of all Transaction objects
+     */
     public List<Transaction> getAllTransactions() {
         List<Transaction> transactions = new ArrayList<>();
         String sql = "SELECT * FROM transactions";
@@ -71,6 +106,12 @@ public class TransactionDAO {
         return transactions;
     }
 
+    /**
+     * Retrieves all transactions for a specific product by its ID.
+     *
+     * @param productId The ID of the product
+     * @return List of Transaction objects associated with the product
+     */
     public List<Transaction> getTransactionsByProductId(String productId) {
         List<Transaction> transactions = new ArrayList<>();
         String sql = "SELECT * FROM transactions WHERE product_id = ?";
@@ -92,8 +133,15 @@ public class TransactionDAO {
         return transactions;
     }
 
+    /**
+     * Deletes a transaction record by its ID.
+     *
+     * @param transactionId The ID of the transaction to delete
+     * @return true if the deletion was successful, false otherwise
+     */
     public boolean deleteTransaction(String transactionId) {
         String sql = "DELETE FROM transactions WHERE id = ?";
+
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -106,7 +154,15 @@ public class TransactionDAO {
         }
     }
 
-    // Helper method to convert ResultSet row to Transaction object
+    /**
+     * Helper method to convert a ResultSet row into a Transaction object.
+     * Note: The Product associated is a dummy placeholder and should be replaced with
+     * a real lookup if necessary.
+     *
+     * @param rs ResultSet pointing to the current row
+     * @return Transaction object mapped from the row
+     * @throws SQLException if any SQL error occurs
+     */
     private Transaction mapRowToTransaction(ResultSet rs) throws SQLException {
         String id = rs.getString("id");
         String productId = rs.getString("product_id");
