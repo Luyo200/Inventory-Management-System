@@ -1,13 +1,21 @@
 package com.yourname.stockwise.dao;
 
-import com.yourname.stockwise.model.Product;
-import com.yourname.stockwise.model.Transaction;
-import com.yourname.stockwise.model.TransactionType;
-
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.yourname.stockwise.model.Product;
+import com.yourname.stockwise.model.Transaction;
+import com.yourname.stockwise.model.TransactionType;
 
 /**
  * Data Access Object (DAO) class for managing transactions in the StockWise application.
@@ -156,8 +164,10 @@ public class TransactionDAO {
 
     /**
      * Helper method to convert a ResultSet row into a Transaction object.
-     * Note: The Product associated is a dummy placeholder and should be replaced with
-     * a real lookup if necessary.
+     * 
+     * NOTE: Since there is no ProductDAO or getProductById method,
+     * this method creates a dummy Product object with unknown details.
+     * You can later replace this with a real product lookup if you add a ProductDAO.
      *
      * @param rs ResultSet pointing to the current row
      * @return Transaction object mapped from the row
@@ -172,9 +182,40 @@ public class TransactionDAO {
         Timestamp ts = rs.getTimestamp("timestamp");
         LocalDateTime timestamp = (ts != null) ? ts.toLocalDateTime() : LocalDateTime.now();
 
-        // TODO: Replace dummy product creation with real Product lookup if needed
+        // Dummy product with only ID, name as "Unknown" and default values for other fields
         Product dummyProduct = new Product(productId, "Unknown", 0, 0, 0.0);
 
         return new Transaction(id, dummyProduct, type, quantity, timestamp);
     }
+    /**
+     * Retrieves all transactions that occurred on the specified date.
+     * Only the date part of the timestamp is considered (ignores time).
+     *
+     * @param date the LocalDate to filter transactions by
+     * @return a list of transactions that occurred on that date
+     */
+    public List<Transaction> getTransactionsByDate(LocalDate date) {
+        List<Transaction> transactions = new ArrayList<>();
+        String sql = "SELECT * FROM transactions WHERE DATE(timestamp) = ?";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setDate(1, Date.valueOf(date));
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    transactions.add(mapRowToTransaction(rs)); // uses your existing mapping method
+                }
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Error fetching transactions for date: " + date);
+            e.printStackTrace();
+        }
+
+        return transactions;
+    }
+
+    
 }

@@ -1,5 +1,6 @@
 package com.yourname.stockwise.model;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,7 +16,7 @@ import com.yourname.stockwise.visitor.InventoryVisitor;
  * stock attribution.</p>
  * 
  * @author L Mahamba
- * @version 1.0.0
+ * @version 1.1.0
  */
 public class Supplier implements InventoryElement {
 
@@ -24,6 +25,7 @@ public class Supplier implements InventoryElement {
     private String email;
     private String phone;
     private String address;
+    private LocalDateTime dateAdded; // New field for tracking when supplier was added
 
     // List of products the supplier provides
     private List<Product> suppliedProducts = new ArrayList<>();
@@ -37,12 +39,13 @@ public class Supplier implements InventoryElement {
      * @param phone   phone number
      * @param address physical address
      */
-    public Supplier(String id, String name, String email, String phone, String address) {
+    public Supplier(String id, String name, String email, String phone, String address, LocalDateTime dateAdded) {
         this.id = id;
         this.name = name;
         this.email = email;
         this.phone = phone;
         this.address = address;
+        this.dateAdded = dateAdded; // Set to current date/time
     }
 
     /**
@@ -57,108 +60,71 @@ public class Supplier implements InventoryElement {
 
     // Getters and Setters
 
-    /**
-     * @return supplier ID
-     */
     public String getId() {
         return id;
     }
 
-    /**
-     * @param id supplier ID to set
-     */
     public void setId(String id) {
         this.id = id;
     }
 
-    /**
-     * @return supplier name
-     */
     public String getName() {
         return name;
     }
 
-    /**
-     * @param name supplier name to set
-     */
     public void setName(String name) {
         this.name = name;
     }
 
-    /**
-     * @return supplier email address
-     */
     public String getEmail() {
         return email;
     }
 
-    /**
-     * @param email supplier email to set
-     */
     public void setEmail(String email) {
         this.email = email;
     }
 
-    /**
-     * @return supplier phone number
-     */
     public String getPhone() {
         return phone;
     }
 
-    /**
-     * @param phone phone number to set
-     */
     public void setPhone(String phone) {
         this.phone = phone;
     }
 
-    /**
-     * @return supplier's physical address
-     */
     public String getAddress() {
         return address;
     }
 
-    /**
-     * @param address physical address to set
-     */
     public void setAddress(String address) {
         this.address = address;
     }
 
-    /**
-     * @return list of products supplied by this supplier
-     */
     public List<Product> getSuppliedProducts() {
         return suppliedProducts;
     }
 
-    /**
-     * Sets the list of products supplied by this supplier.
-     * 
-     * @param suppliedProducts list of products to set
-     */
     public void setSuppliedProducts(List<Product> suppliedProducts) {
         this.suppliedProducts = suppliedProducts;
     }
 
-    /**
-     * Adds a single product to the supplier's product list.
-     * 
-     * @param product product to add
-     */
     public void addProduct(Product product) {
         suppliedProducts.add(product);
     }
 
-    /**
-     * Returns a string representation of the supplier.
-     */
+    public LocalDateTime getDateAdded() {
+        return dateAdded;
+    }
+
+    public void setDateAdded(LocalDateTime dateAdded) {
+        this.dateAdded = dateAdded;
+    }
+
     @Override
     public String toString() {
         return "Supplier [id=" + id + ", name=" + name + ", email=" + email +
                ", phone=" + phone + ", address=" + address +
+               ", dateAdded=" + dateAdded +
                ", suppliedProducts=" + suppliedProducts + "]";
     }
 }

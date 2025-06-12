@@ -1,5 +1,8 @@
 package com.yourname.stockwise.unlokedDisplay;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import com.yourname.stockwise.dao.ProductDAO;
@@ -24,6 +27,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
@@ -130,8 +134,14 @@ public class UnlockedInformation {
 				}
 			}
 		});
+		TableColumn<Product, String> dateAddedCol = new TableColumn<>("Date Added");
+	    dateAddedCol.setCellValueFactory(cellData -> {
+	        LocalDateTime dateAdded = cellData.getValue().getDateAdded();
+	        String formattedDate = dateAdded != null ? dateAdded.toLocalDate().toString() : "N/A";
+	        return new ReadOnlyStringWrapper(formattedDate);
+	    });
 
-		tableView.getColumns().addAll(idCol, nameCol, qtyCol, thresholdCol, priceCol);
+		tableView.getColumns().addAll(idCol, nameCol, qtyCol, thresholdCol, priceCol,dateAddedCol);
 
 		// Style table
 		tableView.setStyle("""
@@ -141,6 +151,21 @@ public class UnlockedInformation {
 				    -fx-border-radius: 10;
 				    -fx-background-radius: 10;
 				""");
+		
+			// Top bar with DatePicker
+			DatePicker datePicker = new DatePicker();
+			datePicker.setPromptText("Filter by Date");
+
+			Button searchBtn = createStyledButton("🔍 Search", e -> {
+				LocalDate selectedDate = datePicker.getValue();
+				if (selectedDate != null) {
+					List<Product> filtered = dao.getProductsByDate(selectedDate);
+					productList.setAll(filtered); // Update table
+				}
+			});
+
+			
+			
 
 		// Buttons with styling
 		Button backBtn = createStyledButton("⬅ Back", e -> showDashboard(stage));
@@ -150,7 +175,7 @@ public class UnlockedInformation {
 		buttonBar.setPadding(new Insets(10, 0, 0, 0));
 
 		// Root layout with padding and background
-		VBox root = new VBox(15, tableView, buttonBar);
+		VBox root = new VBox(15, datePicker, searchBtn, tableView, buttonBar);
 		root.setPadding(new Insets(25));
 		root.setAlignment(Pos.CENTER);
 		root.setStyle("""
@@ -637,62 +662,90 @@ public class UnlockedInformation {
 	 */
 
 	public void showSuppliers(Stage stage) {
-		// Create DAO and fetch data from the database
-		SupplierDAO supplierDAO = new SupplierDAO();
-		List<Supplier> supplierListFromDB = supplierDAO.getAllSuppliers();
+	    SupplierDAO supplierDAO = new SupplierDAO();
+	    List<Supplier> supplierListFromDB = supplierDAO.getAllSuppliers();
 
-		// Observable list for TableView
-		ObservableList<Supplier> supplierList = FXCollections.observableArrayList(supplierListFromDB);
+	    // Observable list for TableView
+	    ObservableList<Supplier> supplierList = FXCollections.observableArrayList(supplierListFromDB);
 
-		// TableView and columns
-		TableView<Supplier> tableView = new TableView<>(supplierList);
+	    // TableView and columns
+	    TableView<Supplier> tableView = new TableView<>(supplierList);
 
-		TableColumn<Supplier, String> idCol = new TableColumn<>("ID");
-		idCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getId()));
+	    TableColumn<Supplier, String> idCol = new TableColumn<>("ID");
+	    idCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getId()));
 
-		TableColumn<Supplier, String> nameCol = new TableColumn<>("Name");
-		nameCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getName()));
+	    TableColumn<Supplier, String> nameCol = new TableColumn<>("Name");
+	    nameCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getName()));
 
-		TableColumn<Supplier, String> emailCol = new TableColumn<>("Email");
-		emailCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getEmail()));
+	    TableColumn<Supplier, String> emailCol = new TableColumn<>("Email");
+	    emailCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getEmail()));
 
-		TableColumn<Supplier, String> phoneCol = new TableColumn<>("Phone");
-		phoneCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getPhone()));
+	    TableColumn<Supplier, String> phoneCol = new TableColumn<>("Phone");
+	    phoneCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getPhone()));
 
-		TableColumn<Supplier, String> addressCol = new TableColumn<>("Address");
-		addressCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getAddress()));
+	    TableColumn<Supplier, String> addressCol = new TableColumn<>("Address");
+	    addressCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getAddress()));
+	 // ➕ NEW: Created At Date Column
+	    TableColumn<Supplier, String> dateCol = new TableColumn<>("Date Added");
+	    dateCol.setCellValueFactory(data -> {
+	        LocalDateTime dateTime = data.getValue().getDateAdded();
+	        String formattedDate = dateTime != null
+	                ? dateTime.format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"))
+	                : "N/A";
+	        return new ReadOnlyStringWrapper(formattedDate);
+	    });
+	    tableView.getColumns().addAll(idCol, nameCol, emailCol, phoneCol, addressCol,dateCol);
+	    tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-		// Add all columns including delete button column
-		tableView.getColumns().addAll(idCol, nameCol, emailCol, phoneCol, addressCol);
+	    // DatePicker for filtering by created date
+	    DatePicker datePicker = new DatePicker();
+	    datePicker.setPromptText("Select created date");
 
-		tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+	    // Search button for filtering suppliers by date
+	    Button searchBtn = new Button("Search by Date");
+	    searchBtn.setOnAction(e -> {
+	        LocalDate selectedDate = datePicker.getValue();
+	        List<Supplier> filteredSuppliers;
+	        if (selectedDate != null) {
+	            filteredSuppliers = supplierDAO.getSuppliersByDate(selectedDate);
+	        } else {
+	            filteredSuppliers = supplierDAO.getAllSuppliers();
+	        }
+	        tableView.setItems(FXCollections.observableArrayList(filteredSuppliers));
+	    });
 
-		// Back button
-		Button backBtn = new Button("Back");
-		backBtn.setOnAction(e -> showDashboard(stage));
+	    // Back button
+	    Button backBtn = new Button("Back");
+	    backBtn.setOnAction(e -> showDashboard(stage));
 
-		// Refresh button
-		Button refreshBtn = new Button("Refresh");
-		refreshBtn.setOnAction(e -> {
-			List<Supplier> refreshedList = new SupplierDAO().getAllSuppliers();
-			tableView.setItems(FXCollections.observableArrayList(refreshedList));
-		});
+	    // Refresh button to reload all suppliers
+	    Button refreshBtn = new Button("Refresh");
+	    refreshBtn.setOnAction(e -> {
+	        List<Supplier> refreshedList = supplierDAO.getAllSuppliers();
+	        tableView.setItems(FXCollections.observableArrayList(refreshedList));
+	        datePicker.setValue(null);  // Reset the date picker
+	    });
+	 
+	    // Layout for search controls
+	    HBox searchBox = new HBox(10, datePicker, searchBtn);
+	    searchBox.setAlignment(Pos.CENTER_LEFT);
+	    searchBox.setPadding(new Insets(10));
 
-		// Buttons layout
-		HBox buttons = new HBox(10, backBtn, refreshBtn);
-		buttons.setPadding(new Insets(10));
-		buttons.setAlignment(Pos.CENTER_RIGHT);
+	    // Buttons layout
+	    HBox buttons = new HBox(10, backBtn, refreshBtn);
+	    buttons.setPadding(new Insets(10));
+	    buttons.setAlignment(Pos.CENTER_RIGHT);
 
-		// Root layout
-		VBox root = new VBox(10, tableView, buttons);
-		root.setPadding(new Insets(20));
-		root.setStyle("-fx-background-color: #f0f4f7; -fx-border-radius: 10; -fx-background-radius: 10;");
+	    // Root layout with search controls, table, and buttons
+	    VBox root = new VBox(10, searchBox, tableView, buttons);
+	    root.setPadding(new Insets(20));
+	    root.setStyle("-fx-background-color: #f0f4f7; -fx-border-radius: 10; -fx-background-radius: 10;");
 
-		// Show scene
-		Scene scene = new Scene(root, 800, 450);
-		stage.setScene(scene);
-		stage.setTitle("Supplier List");
-		stage.show();
+	    // Show scene
+	    Scene scene = new Scene(root, 800, 450);
+	    stage.setScene(scene);
+	    stage.setTitle("Supplier List");
+	    stage.show();
 	}
 
 	/**
@@ -702,58 +755,82 @@ public class UnlockedInformation {
 	 */
 
 	public void showTransactions(Stage stage) {
-		TransactionDAO transactionDAO = new TransactionDAO();
-		List<Transaction> transactionListFromDB = transactionDAO.getAllTransactions();
-		ObservableList<Transaction> transactionList = FXCollections.observableArrayList(transactionListFromDB);
+	    TransactionDAO transactionDAO = new TransactionDAO();
+	    List<Transaction> transactionListFromDB = transactionDAO.getAllTransactions();
+	    ObservableList<Transaction> transactionList = FXCollections.observableArrayList(transactionListFromDB);
 
-		TableView<Transaction> tableView = new TableView<>(transactionList);
-		tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+	    // TableView setup
+	    TableView<Transaction> tableView = new TableView<>(transactionList);
+	    tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+	    tableView.setPlaceholder(new Label("No transactions available"));
 
-		TableColumn<Transaction, String> idCol = new TableColumn<>("ID");
-		idCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getId()));
-		idCol.setMaxWidth(80);
-		idCol.setStyle("-fx-alignment: CENTER;");
+	    // ID column
+	    TableColumn<Transaction, String> idCol = new TableColumn<>("ID");
+	    idCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getId()));
+	    idCol.setStyle("-fx-alignment: CENTER;");
 
-		TableColumn<Transaction, String> productCol = new TableColumn<>("Product");
-		productCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getProduct().getName()));
+	    // Product column
+	    TableColumn<Transaction, String> productCol = new TableColumn<>("Product");
+	    productCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getProduct().getName()));
 
-		TableColumn<Transaction, String> typeCol = new TableColumn<>("Type");
-		typeCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getType().toString()));
-		typeCol.setMaxWidth(100);
-		typeCol.setStyle("-fx-alignment: CENTER;");
+	    // Type column
+	    TableColumn<Transaction, String> typeCol = new TableColumn<>("Type");
+	    typeCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getType().toString()));
+	    typeCol.setStyle("-fx-alignment: CENTER;");
 
-		TableColumn<Transaction, Integer> qtyCol = new TableColumn<>("Quantity");
-		qtyCol.setCellValueFactory(data -> new ReadOnlyObjectWrapper<>(data.getValue().getQuantity()));
-		qtyCol.setMaxWidth(100);
-		qtyCol.setStyle("-fx-alignment: CENTER;");
+	    // Quantity column
+	    TableColumn<Transaction, Integer> qtyCol = new TableColumn<>("Quantity");
+	    qtyCol.setCellValueFactory(data -> new ReadOnlyObjectWrapper<>(data.getValue().getQuantity()));
+	    qtyCol.setStyle("-fx-alignment: CENTER;");
+      
+	    // Date column
+	    TableColumn<Transaction, String> dateCol = new TableColumn<>("Date");
+	    dateCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getTimestamp().toLocalDate().toString()));
 
-		TableColumn<Transaction, String> dateCol = new TableColumn<>("Date");
-		dateCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getTimestamp().toString()));
+	    tableView.getColumns().addAll(idCol, productCol, typeCol, qtyCol, dateCol);
 
-		tableView.getColumns().addAll(idCol, productCol, typeCol, qtyCol, dateCol);
+	    // Back button
+	    Button backBtn = createStyledButton("⬅ Back", e -> showDashboard(stage));
 
-		Button backBtn = new Button("Back");
-		backBtn.setStyle("-fx-background-color: #3498db; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-				+ "-fx-padding: 8 20 8 20; " + "-fx-background-radius: 5; " + "-fx-cursor: hand;");
-		backBtn.setOnMouseEntered(e -> backBtn
-				.setStyle("-fx-background-color: #2980b9; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-						+ "-fx-padding: 8 20 8 20; " + "-fx-background-radius: 5; " + "-fx-cursor: hand;"));
-		backBtn.setOnMouseExited(e -> backBtn
-				.setStyle("-fx-background-color: #3498db; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-						+ "-fx-padding: 8 20 8 20; " + "-fx-background-radius: 5; " + "-fx-cursor: hand;"));
+	    // DatePicker filter
+	    DatePicker datePicker = new DatePicker();
+	    datePicker.setPromptText("Filter by Date");
 
-		backBtn.setOnAction(e -> showDashboard(stage));
+	    Button searchBtn = createStyledButton("🔍 Search", e -> {
+	        LocalDate selectedDate = datePicker.getValue();
+	        if (selectedDate != null) {
+	            List<Transaction> filtered = transactionDAO.getTransactionsByDate(selectedDate);
+	            transactionList.setAll(filtered); // Refresh table view
+	        }
+	    });
 
-		HBox buttonBox = new HBox(10, backBtn);
-		buttonBox.setPadding(new Insets(10));
-		buttonBox.setAlignment(Pos.CENTER_RIGHT);
+	    // Top bar with search
+	    HBox topBar = new HBox(10, datePicker, searchBtn);
+	    topBar.setAlignment(Pos.CENTER_LEFT);
+	    topBar.setPadding(new Insets(10));
 
-		VBox root = new VBox(10, tableView, buttonBox);
-		root.setPadding(new Insets(20));
-		root.setStyle("-fx-background-color: #f0f4f7; " + "-fx-border-radius: 10; " + "-fx-background-radius: 10;");
+	    // Bottom button bar
+	    HBox buttonBox = new HBox(10, backBtn);
+	    buttonBox.setPadding(new Insets(10));
+	    buttonBox.setAlignment(Pos.CENTER_RIGHT);
 
-		stage.setScene(new Scene(root, 750, 450));
+	    // Layout
+	    VBox root = new VBox(10, topBar, tableView, buttonBox, datePicker, searchBtn);
+	    
+	    
+	    root.setPadding(new Insets(20));
+	    root.setStyle("""
+	        -fx-background-color: #f0f4f7;
+	        -fx-border-radius: 10;
+	        -fx-background-radius: 10;
+	    """);
+
+	    // Scene setup
+	    stage.setScene(new Scene(root, 800, 500));
+	    stage.setTitle("Transaction History");
+	    stage.show();
 	}
+
 
 	/**
 	 * Clears the text fields provided.

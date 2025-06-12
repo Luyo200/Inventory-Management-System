@@ -13,6 +13,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -22,7 +23,7 @@ import java.util.Set;
  * Displays forms and handles actions for adding new products.
  * 
  * Author: L Mahamba
- * Version: 1.0
+ * Version: 1.1
  */
 public class ProductController {
 
@@ -59,6 +60,12 @@ public class ProductController {
         TextField priceField = new TextField();
         priceField.setPromptText("Unit Price");
 
+        // New label to show the date added (read-only)
+        Label dateAddedLabel = new Label();
+        dateAddedLabel.setStyle("-fx-font-style: italic; -fx-text-fill: #666;");
+        // Show current date/time formatted
+        dateAddedLabel.setText("Date Added: " + java.time.LocalDateTime.now().toString());
+
         Button saveBtn = new Button("💾 Save");
         Button cancelBtn = new Button("⬅ Back");
 
@@ -70,9 +77,8 @@ public class ProductController {
                     "Are you sure you want to save this product?");
             if (!confirmed) return;
 
-            // Validate inputs before parsing
             if (nameField.getText().isBlank() || qtyField.getText().isBlank() ||
-                thresholdField.getText().isBlank() || priceField.getText().isBlank()) {
+                    thresholdField.getText().isBlank() || priceField.getText().isBlank()) {
                 AlertHelper.showError("Missing Fields", "Please fill in all fields.");
                 return;
             }
@@ -85,6 +91,11 @@ public class ProductController {
                 double price = Double.parseDouble(priceField.getText());
 
                 Product newProduct = new Product(id, name, qty, threshold, price);
+                newProduct.setUsername(System.getProperty("user.name")); // Set current user
+                LocalDateTime now = LocalDateTime.now();
+                newProduct.setDateAdded(now);                            // Set current date/time
+                // Update label to show date (optional)
+                dateAddedLabel.setText("Date Added: " + now.toString());
 
                 boolean added = productDAO.addProduct(newProduct);
                 if (added) {
@@ -92,6 +103,8 @@ public class ProductController {
                     AlertHelper.showInfo("Product Added", "Product added successfully!");
                     app.clearFields(idField, nameField, qtyField, thresholdField, priceField);
                     idField.setText(generateNextProductId(productDAO.getAllProducts()));
+                    // Reset date label for new entry
+                    dateAddedLabel.setText("Date Added: " + LocalDateTime.now().toString());
                 } else {
                     AlertHelper.showError("Save Failed", "Failed to add product.");
                 }
@@ -109,7 +122,7 @@ public class ProductController {
             }
         });
 
-        VBox form = new VBox(12, titleLabel, idField, nameField, qtyField, thresholdField, priceField, saveBtn,
+        VBox form = new VBox(12, titleLabel, idField, nameField, qtyField, thresholdField, priceField, dateAddedLabel, saveBtn,
                 cancelBtn);
         form.setPadding(new Insets(25));
         form.setAlignment(Pos.CENTER);
@@ -122,17 +135,9 @@ public class ProductController {
                 -fx-font-size: 14px;
                 """);
 
-        Scene scene = new Scene(form, 400, 480);
+        Scene scene = new Scene(form, 400, 520); // slightly taller for new label
         stage.setScene(scene);
     }
-
-    /**
-     * Generates the next unique product ID.
-     * For example: P0001, P0002, ...
-     *
-     * @param products List of existing products
-     * @return A unique product ID not used by any existing product
-     */
     private String generateNextProductId(List<Product> products) {
         Set<String> existingIds = new HashSet<>();
         for (Product p : products) {
@@ -148,4 +153,5 @@ public class ProductController {
             num++;
         }
     }
+
 }

@@ -1,5 +1,8 @@
 package com.yourname.stockwise.app;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import com.yourname.stockwise.controller.ProductController;
@@ -31,6 +34,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tab;
@@ -128,94 +132,116 @@ public class InventoryApp extends Application {
 	 */
 
 	public void showProductTable(Stage stage) {
-		
-		
-		// DAO and data fetch
-		ProductDAO dao = new ProductDAO();
-		List<Product> allProducts = dao.getAllProducts();
-		ObservableList<Product> productList = FXCollections.observableArrayList(allProducts);
 
-		// TableView setup
-		TableView<Product> tableView = new TableView<>(productList);
-		tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-		tableView.setPlaceholder(new Label("No products available"));
+	    ProductDAO dao = new ProductDAO();
+	    List<Product> allProducts = dao.getAllProducts();
+	    ObservableList<Product> productList = FXCollections.observableArrayList(allProducts);
 
-		// Limit table height to allow internal scrolling when needed
-		tableView.setPrefHeight(400); // <-- Set max height for scroll inside table
+	    TableView<Product> tableView = new TableView<>(productList);
+	    tableView.setColumnResizePolicy(TableView.UNCONSTRAINED_RESIZE_POLICY);
+	    tableView.setPlaceholder(new Label("No products available"));
 
-		// Define columns with better formatting
-		TableColumn<Product, String> idCol = new TableColumn<>("ID");
-		idCol.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getId()));
+	    // Define columns
+	    TableColumn<Product, String> idCol = new TableColumn<>("ID");
+	    idCol.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getId()));
 
-		TableColumn<Product, String> nameCol = new TableColumn<>("Name");
-		nameCol.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getName()));
+	    TableColumn<Product, String> nameCol = new TableColumn<>("Name");
+	    nameCol.setCellValueFactory(cellData -> new ReadOnlyStringWrapper(cellData.getValue().getName()));
 
-		TableColumn<Product, Integer> qtyCol = new TableColumn<>("Quantity");
-		qtyCol.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getQuantity()));
+	    TableColumn<Product, Integer> qtyCol = new TableColumn<>("Quantity");
+	    qtyCol.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getQuantity()));
 
-		TableColumn<Product, Integer> thresholdCol = new TableColumn<>("Threshold");
-		thresholdCol.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getThreshold()));
+	    TableColumn<Product, Integer> thresholdCol = new TableColumn<>("Threshold");
+	    thresholdCol.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getThreshold()));
 
-		TableColumn<Product, Double> priceCol = new TableColumn<>("Unit Price");
-		priceCol.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getUnitPrice()));
-		priceCol.setCellFactory(col -> new TableCell<>() {
-			@Override
-			protected void updateItem(Double price, boolean empty) {
-				super.updateItem(price, empty);
-				if (empty || price == null) {
-					setText(null);
-				} else {
-					setText(String.format("$%.2f", price));
-				}
-			}
-		});
+	    TableColumn<Product, Double> priceCol = new TableColumn<>("Unit Price");
+	    priceCol.setCellValueFactory(cellData -> new ReadOnlyObjectWrapper<>(cellData.getValue().getUnitPrice()));
+	    priceCol.setCellFactory(col -> new TableCell<>() {
+	        @Override
+	        protected void updateItem(Double price, boolean empty) {
+	            super.updateItem(price, empty);
+	            if (empty || price == null) {
+	                setText(null);
+	            } else {
+	                setText(String.format("$%.2f", price));
+	            }
+	        }
+	    });
 
-		tableView.getColumns().addAll(idCol, nameCol, qtyCol, thresholdCol, priceCol);
+	    TableColumn<Product, String> dateAddedCol = new TableColumn<>("Date Added");
+	    dateAddedCol.setCellValueFactory(cellData -> {
+	        LocalDateTime dateAdded = cellData.getValue().getDateAdded();
+	        String formattedDate = dateAdded != null ? dateAdded.toLocalDate().toString() : "N/A";
+	        return new ReadOnlyStringWrapper(formattedDate);
+	    });
 
-		// Style table
-		tableView.setStyle("""
-				    -fx-font-size: 14px;
-				    -fx-border-color: #007acc;
-				    -fx-border-width: 2;
-				    -fx-border-radius: 10;
-				    -fx-background-radius: 10;
-				""");
+	    tableView.getColumns().addAll(idCol, nameCol, qtyCol, thresholdCol, priceCol, dateAddedCol);
 
-		// Buttons with styling
-		Button backBtn = createStyledButton("⬅ Back", e -> showDashboard(stage));
-		Button addProductBtn = createStyledButton("➕ Add Product", e -> {
-			ProductController pc = new ProductController();
-			pc.showAddProductForm(stage);
-		});
-		Button deleteBtn = createStyledButton("🗑 Delete", e -> {
-			Product selected = tableView.getSelectionModel().getSelectedItem();
-			if (selected != null) {
-				dao.deleteProduct(selected.getId());
-				productList.remove(selected);
-			}
-		});
+	    tableView.setStyle("""
+	        -fx-font-size: 14px;
+	        -fx-border-color: #007acc;
+	        -fx-border-width: 2;
+	        -fx-border-radius: 10;
+	        -fx-background-radius: 10;
+	    """);
 
-		HBox buttonBar = new HBox(20, backBtn, addProductBtn, deleteBtn);
-		buttonBar.setAlignment(Pos.CENTER);
-		buttonBar.setPadding(new Insets(10, 0, 0, 0));
+	    // Wrap TableView inside a ScrollPane with fixed max height to enable scrolling
+	    ScrollPane scrollPane = new ScrollPane(tableView);
+	    scrollPane.setFitToWidth(true);
+	    scrollPane.setFitToHeight(true);
+	    scrollPane.setPrefViewportHeight(400);  // Limit viewport height to trigger scroll
+	    scrollPane.setMaxHeight(400);
+	    scrollPane.setStyle("-fx-background: transparent;");
 
-		// Root layout with padding and background
-		VBox root = new VBox(15, tableView, buttonBar);
-		root.setPadding(new Insets(25));
-		root.setAlignment(Pos.CENTER);
-		root.setStyle("""
-				    -fx-background-color: linear-gradient(to bottom, #e0eafc, #cfdef3);
-				    -fx-border-radius: 15;
-				    -fx-background-radius: 15;
-				""");
-		// Delete button
+	    // Buttons
+	    Button backBtn = createStyledButton("⬅ Back", e -> showDashboard(stage));
+	    Button addProductBtn = createStyledButton("➕ Add Product", e -> {
+	        ProductController pc = new ProductController();
+	        pc.showAddProductForm(stage);
+	    });
+	    Button deleteBtn = createStyledButton("🗑 Delete", e -> {
+	        Product selected = tableView.getSelectionModel().getSelectedItem();
+	        if (selected != null) {
+	            dao.deleteProduct(selected.getId());
+	            productList.remove(selected);
+	        }
+	    });
 
-		// Scene setup
-		Scene scene = new Scene(root, 750, 550);
-		stage.setScene(scene);
-		stage.setTitle("Inventory Products");
-		stage.show();
+	    HBox buttonBar = new HBox(20, backBtn, addProductBtn, deleteBtn);
+	    buttonBar.setAlignment(Pos.CENTER);
+	    buttonBar.setPadding(new Insets(10, 0, 0, 0));
+
+	    // Date filter
+	    DatePicker datePicker = new DatePicker();
+	    datePicker.setPromptText("Filter by Date");
+
+	    Button searchBtn = createStyledButton("🔍 Search", e -> {
+	        LocalDate selectedDate = datePicker.getValue();
+	        if (selectedDate != null) {
+	            List<Product> filtered = dao.getProductsByDate(selectedDate);
+	            productList.setAll(filtered);
+	        }
+	    });
+
+	    HBox searchBar = new HBox(10, datePicker, searchBtn);
+	    searchBar.setAlignment(Pos.CENTER);
+
+	    // Layout
+	    VBox root = new VBox(15, searchBar, scrollPane, buttonBar);
+	    root.setPadding(new Insets(25));
+	    root.setAlignment(Pos.CENTER);
+	    root.setStyle("""
+	        -fx-background-color: linear-gradient(to bottom, #e0eafc, #cfdef3);
+	        -fx-border-radius: 15;
+	        -fx-background-radius: 15;
+	    """);
+
+	    Scene scene = new Scene(root, 800, 580);
+	    stage.setScene(scene);
+	    stage.setTitle("Inventory Products");
+	    stage.show();
 	}
+
 
 	/**
 	 * Displays the main dashboard with navigation buttons to various application
@@ -715,126 +741,114 @@ public class InventoryApp extends Application {
 	 */
 
 	public void showSuppliers(Stage stage) {
-		// Create DAO and fetch data from the database
-		SupplierDAO supplierDAO = new SupplierDAO();
-		List<Supplier> supplierListFromDB = supplierDAO.getAllSuppliers();
+	    // Create DAO and fetch data
+	    SupplierDAO supplierDAO = new SupplierDAO();
+	    List<Supplier> supplierListFromDB = supplierDAO.getAllSuppliers();
+	    ObservableList<Supplier> supplierList = FXCollections.observableArrayList(supplierListFromDB);
 
-		// Observable list for TableView
-		ObservableList<Supplier> supplierList = FXCollections.observableArrayList(supplierListFromDB);
+	    TableView<Supplier> tableView = new TableView<>(supplierList);
 
-		// TableView and columns
-		TableView<Supplier> tableView = new TableView<>(supplierList);
+	    TableColumn<Supplier, String> idCol = new TableColumn<>("ID");
+	    idCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getId()));
 
-		TableColumn<Supplier, String> idCol = new TableColumn<>("ID");
-		idCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getId()));
+	    TableColumn<Supplier, String> nameCol = new TableColumn<>("Name");
+	    nameCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getName()));
 
-		TableColumn<Supplier, String> nameCol = new TableColumn<>("Name");
-		nameCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getName()));
+	    TableColumn<Supplier, String> emailCol = new TableColumn<>("Email");
+	    emailCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getEmail()));
 
-		TableColumn<Supplier, String> emailCol = new TableColumn<>("Email");
-		emailCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getEmail()));
+	    TableColumn<Supplier, String> phoneCol = new TableColumn<>("Phone");
+	    phoneCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getPhone()));
 
-		TableColumn<Supplier, String> phoneCol = new TableColumn<>("Phone");
-		phoneCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getPhone()));
+	    TableColumn<Supplier, String> addressCol = new TableColumn<>("Address");
+	    addressCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getAddress()));
 
-		TableColumn<Supplier, String> addressCol = new TableColumn<>("Address");
-		addressCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getAddress()));
+	    // ➕ NEW: Created At Date Column
+	    TableColumn<Supplier, String> dateCol = new TableColumn<>("Date Added");
+	    dateCol.setCellValueFactory(data -> {
+	        LocalDateTime dateTime = data.getValue().getDateAdded();
+	        String formattedDate = dateTime != null
+	                ? dateTime.format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm"))
+	                : "N/A";
+	        return new ReadOnlyStringWrapper(formattedDate);
+	    });
 
-		// Delete button column
-		TableColumn<Supplier, Void> deleteCol = new TableColumn<>("Delete");
-		deleteCol.setMaxWidth(100);
-		deleteCol.setStyle("-fx-alignment: CENTER;");
+	    // Delete button column
+	    TableColumn<Supplier, Void> deleteCol = new TableColumn<>("Delete");
+	    deleteCol.setMaxWidth(100);
+	    deleteCol.setStyle("-fx-alignment: CENTER;");
+	    deleteCol.setCellFactory(col -> new TableCell<>() {
+	        private final Button deleteButton = new Button("Delete");
 
-		deleteCol.setCellFactory(col -> new TableCell<>() {
-			private final Button deleteButton = new Button("Delete");
+	        {
+	            deleteButton.setStyle(
+	                "-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; " +
+	                "-fx-cursor: hand; -fx-padding: 5 10 5 10; -fx-background-radius: 5;");
+	            deleteButton.setOnMouseEntered(e -> deleteButton.setStyle(
+	                "-fx-background-color: #c0392b; -fx-text-fill: white; -fx-font-weight: bold; " +
+	                "-fx-cursor: hand; -fx-padding: 5 10 5 10; -fx-background-radius: 5;"));
+	            deleteButton.setOnMouseExited(e -> deleteButton.setStyle(
+	                "-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; " +
+	                "-fx-cursor: hand; -fx-padding: 5 10 5 10; -fx-background-radius: 5;"));
 
-			{
-				deleteButton.setStyle(
-						"-fx-background-color: #e74c3c; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-								+ "-fx-cursor: hand; " + "-fx-padding: 5 10 5 10; " + "-fx-background-radius: 5;");
+	            deleteButton.setOnAction(e -> {
+	                Supplier supplier = getTableView().getItems().get(getIndex());
+	                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+	                alert.setTitle("Confirm Delete");
+	                alert.setHeaderText(null);
+	                alert.setContentText("Are you sure you want to delete supplier: " + supplier.getName() + "?");
+	                alert.showAndWait().ifPresent(response -> {
+	                    if (response == ButtonType.OK) {
+	                        boolean success = supplierDAO.deleteSupplier(supplier.getId());
+	                        if (success) {
+	                            getTableView().getItems().remove(supplier);
+	                        } else {
+	                            Alert errorAlert = new Alert(Alert.AlertType.ERROR);
+	                            errorAlert.setTitle("Delete Failed");
+	                            errorAlert.setHeaderText(null);
+	                            errorAlert.setContentText("Failed to delete supplier. Try again.");
+	                            errorAlert.showAndWait();
+	                        }
+	                    }
+	                });
+	            });
+	        }
 
-				deleteButton.setOnMouseEntered(e -> deleteButton.setStyle(
-						"-fx-background-color: #c0392b; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-								+ "-fx-cursor: hand; " + "-fx-padding: 5 10 5 10; " + "-fx-background-radius: 5;"));
+	        @Override
+	        protected void updateItem(Void item, boolean empty) {
+	            super.updateItem(item, empty);
+	            setGraphic(empty ? null : deleteButton);
+	        }
+	    });
 
-				deleteButton.setOnMouseExited(e -> deleteButton.setStyle(
-						"-fx-background-color: #e74c3c; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-								+ "-fx-cursor: hand; " + "-fx-padding: 5 10 5 10; " + "-fx-background-radius: 5;"));
+	    // Add all columns
+	    tableView.getColumns().addAll(idCol, nameCol, emailCol, phoneCol, addressCol, dateCol, deleteCol);
+	    tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-				deleteButton.setOnAction(e -> {
-					Supplier supplier = getTableView().getItems().get(getIndex());
+	    Button backBtn = new Button("Back");
+	    backBtn.setOnAction(e -> showDashboard(stage));
 
-					// Confirm before deleting
-					Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-					alert.setTitle("Confirm Delete");
-					alert.setHeaderText(null);
-					alert.setContentText("Are you sure you want to delete supplier: " + supplier.getName() + "?");
+	    Button addSupplierBtn = new Button("Add Supplier");
+	    SupplierController supplierController = new SupplierController();
+	    addSupplierBtn.setOnAction(e -> supplierController.showAddSupplierForm(stage));
 
-					alert.showAndWait().ifPresent(response -> {
-						if (response == ButtonType.OK) {
-							boolean success = supplierDAO.deleteSupplier(supplier.getId());
-							if (success) {
-								getTableView().getItems().remove(supplier);
-							} else {
-								// Show error alert if delete failed
-								Alert errorAlert = new Alert(Alert.AlertType.ERROR);
-								errorAlert.setTitle("Delete Failed");
-								errorAlert.setHeaderText(null);
-								errorAlert.setContentText("Failed to delete supplier. Try again.");
-								errorAlert.showAndWait();
-							}
-						}
-					});
-				});
-			}
+	    Button refreshBtn = new Button("Refresh");
+	    refreshBtn.setOnAction(e -> {
+	        List<Supplier> refreshedList = supplierDAO.getAllSuppliers();
+	        tableView.setItems(FXCollections.observableArrayList(refreshedList));
+	    });
 
-			@Override
-			protected void updateItem(Void item, boolean empty) {
-				super.updateItem(item, empty);
-				if (empty) {
-					setGraphic(null);
-				} else {
-					setGraphic(deleteButton);
-				}
-			}
-		});
+	    HBox buttons = new HBox(10, backBtn, addSupplierBtn, refreshBtn);
+	    buttons.setPadding(new Insets(10));
+	    buttons.setAlignment(Pos.CENTER_RIGHT);
 
-		// Add all columns including delete button column
-		tableView.getColumns().addAll(idCol, nameCol, emailCol, phoneCol, addressCol, deleteCol);
+	    VBox root = new VBox(10, tableView, buttons);
+	    root.setPadding(new Insets(20));
+	    root.setStyle("-fx-background-color: #f0f4f7; -fx-border-radius: 10; -fx-background-radius: 10;");
 
-		tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-
-		// Back button
-		Button backBtn = new Button("Back");
-		backBtn.setOnAction(e -> showDashboard(stage));
-
-		// Add Supplier button
-		Button addSupplierBtn = new Button("Add Supplier");
-		SupplierController supplierController = new SupplierController();
-		addSupplierBtn.setOnAction(e -> supplierController.showAddSupplierForm(stage));
-
-		// Refresh button
-		Button refreshBtn = new Button("Refresh");
-		refreshBtn.setOnAction(e -> {
-			List<Supplier> refreshedList = new SupplierDAO().getAllSuppliers();
-			tableView.setItems(FXCollections.observableArrayList(refreshedList));
-		});
-
-		// Buttons layout
-		HBox buttons = new HBox(10, backBtn, addSupplierBtn, refreshBtn);
-		buttons.setPadding(new Insets(10));
-		buttons.setAlignment(Pos.CENTER_RIGHT);
-
-		// Root layout
-		VBox root = new VBox(10, tableView, buttons);
-		root.setPadding(new Insets(20));
-		root.setStyle("-fx-background-color: #f0f4f7; -fx-border-radius: 10; -fx-background-radius: 10;");
-
-		// Show scene
-		Scene scene = new Scene(root, 800, 450);
-		stage.setScene(scene);
-		stage.setTitle("Supplier List");
-		stage.show();
+	    stage.setScene(new Scene(root, 900, 500));
+	    stage.setTitle("Supplier List");
+	    stage.show();
 	}
 
 	/**
@@ -844,115 +858,123 @@ public class InventoryApp extends Application {
 	 */
 
 	public void showTransactions(Stage stage) {
-		TransactionDAO transactionDAO = new TransactionDAO();
-		List<Transaction> transactionListFromDB = transactionDAO.getAllTransactions();
-		ObservableList<Transaction> transactionList = FXCollections.observableArrayList(transactionListFromDB);
+	    TransactionDAO transactionDAO = new TransactionDAO();
+	    List<Transaction> transactionListFromDB = transactionDAO.getAllTransactions();
+	    ObservableList<Transaction> transactionList = FXCollections.observableArrayList(transactionListFromDB);
 
-		TableView<Transaction> tableView = new TableView<>(transactionList);
-		tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+	    TableView<Transaction> tableView = new TableView<>(transactionList);
+	    tableView.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-		TableColumn<Transaction, String> idCol = new TableColumn<>("ID");
-		idCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getId()));
-		idCol.setMaxWidth(80);
-		idCol.setStyle("-fx-alignment: CENTER;");
+	    TableColumn<Transaction, String> idCol = new TableColumn<>("ID");
+	    idCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getId()));
+	    idCol.setMaxWidth(80);
+	    idCol.setStyle("-fx-alignment: CENTER;");
 
-		TableColumn<Transaction, String> productCol = new TableColumn<>("Product");
-		productCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getProduct().getName()));
+	    TableColumn<Transaction, String> productCol = new TableColumn<>("Product");
+	    productCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getProduct().getName()));
 
-		TableColumn<Transaction, String> typeCol = new TableColumn<>("Type");
-		typeCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getType().toString()));
-		typeCol.setMaxWidth(100);
-		typeCol.setStyle("-fx-alignment: CENTER;");
+	    TableColumn<Transaction, String> typeCol = new TableColumn<>("Type");
+	    typeCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getType().toString()));
+	    typeCol.setMaxWidth(100);
+	    typeCol.setStyle("-fx-alignment: CENTER;");
 
-		TableColumn<Transaction, Integer> qtyCol = new TableColumn<>("Quantity");
-		qtyCol.setCellValueFactory(data -> new ReadOnlyObjectWrapper<>(data.getValue().getQuantity()));
-		qtyCol.setMaxWidth(100);
-		qtyCol.setStyle("-fx-alignment: CENTER;");
+	    TableColumn<Transaction, Integer> qtyCol = new TableColumn<>("Quantity");
+	    qtyCol.setCellValueFactory(data -> new ReadOnlyObjectWrapper<>(data.getValue().getQuantity()));
+	    qtyCol.setMaxWidth(100);
+	    qtyCol.setStyle("-fx-alignment: CENTER;");
 
-		TableColumn<Transaction, String> dateCol = new TableColumn<>("Date");
-		dateCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getTimestamp().toString()));
+	    TableColumn<Transaction, String> dateCol = new TableColumn<>("Date");
+	    dateCol.setCellValueFactory(data -> new ReadOnlyStringWrapper(data.getValue().getTimestamp().toString()));
 
-		// Delete Button column
-		TableColumn<Transaction, Void> deleteCol = new TableColumn<>("Delete");
-		deleteCol.setMaxWidth(100);
-		deleteCol.setStyle("-fx-alignment: CENTER;");
+	    TableColumn<Transaction, Void> deleteCol = new TableColumn<>("Delete");
+	    deleteCol.setMaxWidth(100);
+	    deleteCol.setStyle("-fx-alignment: CENTER;");
 
-		deleteCol.setCellFactory(col -> new TableCell<>() {
-			private final Button deleteButton = new Button("Delete");
+	    deleteCol.setCellFactory(col -> new TableCell<>() {
+	        private final Button deleteButton = new Button("Delete");
 
-			{
-				deleteButton.setStyle(
-						"-fx-background-color: #e74c3c; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-								+ "-fx-cursor: hand; " + "-fx-padding: 5 10 5 10; " + "-fx-background-radius: 5;");
+	        {
+	            deleteButton.setStyle(
+	                    "-fx-background-color: #e74c3c; " +
+	                    "-fx-text-fill: white; " +
+	                    "-fx-font-weight: bold; " +
+	                    "-fx-cursor: hand; " +
+	                    "-fx-padding: 5 10 5 10; " +
+	                    "-fx-background-radius: 5;");
 
-				deleteButton.setOnMouseEntered(e -> deleteButton.setStyle(
-						"-fx-background-color: #c0392b; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-								+ "-fx-cursor: hand; " + "-fx-padding: 5 10 5 10; " + "-fx-background-radius: 5;"));
+	            deleteButton.setOnMouseEntered(e -> deleteButton.setStyle(
+	                    "-fx-background-color: #c0392b; " +
+	                    "-fx-text-fill: white; " +
+	                    "-fx-font-weight: bold; " +
+	                    "-fx-cursor: hand; " +
+	                    "-fx-padding: 5 10 5 10; " +
+	                    "-fx-background-radius: 5;"));
 
-				deleteButton.setOnMouseExited(e -> deleteButton.setStyle(
-						"-fx-background-color: #e74c3c; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-								+ "-fx-cursor: hand; " + "-fx-padding: 5 10 5 10; " + "-fx-background-radius: 5;"));
+	            deleteButton.setOnMouseExited(e -> deleteButton.setStyle(
+	                    "-fx-background-color: #e74c3c; " +
+	                    "-fx-text-fill: white; " +
+	                    "-fx-font-weight: bold; " +
+	                    "-fx-cursor: hand; " +
+	                    "-fx-padding: 5 10 5 10; " +
+	                    "-fx-background-radius: 5;"));
 
-				deleteButton.setOnAction(e -> {
-					Transaction transaction = getTableView().getItems().get(getIndex());
-					boolean confirmed = AlertHelper.showConfirmation("Confirm Delete",
-							"Are you sure you want to delete transaction " + transaction.getId() + "?");
-					if (confirmed) {
-						transactionDAO.deleteTransaction(transaction.getId());
-						transactionList.remove(transaction);
-					}
-				});
-			}
+	            deleteButton.setOnAction(e -> {
+	                Transaction transaction = getTableView().getItems().get(getIndex());
+	                boolean confirmed = AlertHelper.showConfirmation("Confirm Delete",
+	                        "Are you sure you want to delete transaction " + transaction.getId() + "?");
+	                if (confirmed) {
+	                    transactionDAO.deleteTransaction(transaction.getId());
+	                    transactionList.remove(transaction);
+	                }
+	            });
+	        }
 
-			@Override
-			protected void updateItem(Void item, boolean empty) {
-				super.updateItem(item, empty);
-				if (empty) {
-					setGraphic(null);
-				} else {
-					setGraphic(deleteButton);
-				}
-			}
-		});
+	        @Override
+	        protected void updateItem(Void item, boolean empty) {
+	            super.updateItem(item, empty);
+	            if (empty) {
+	                setGraphic(null);
+	            } else {
+	                setGraphic(deleteButton);
+	            }
+	        }
+	    });
 
-		tableView.getColumns().addAll(idCol, productCol, typeCol, qtyCol, dateCol, deleteCol);
+	    tableView.getColumns().addAll(idCol, productCol, typeCol, qtyCol, dateCol, deleteCol);
 
-		Button backBtn = new Button("Back");
-		backBtn.setStyle("-fx-background-color: #3498db; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-				+ "-fx-padding: 8 20 8 20; " + "-fx-background-radius: 5; " + "-fx-cursor: hand;");
-		backBtn.setOnMouseEntered(e -> backBtn
-				.setStyle("-fx-background-color: #2980b9; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-						+ "-fx-padding: 8 20 8 20; " + "-fx-background-radius: 5; " + "-fx-cursor: hand;"));
-		backBtn.setOnMouseExited(e -> backBtn
-				.setStyle("-fx-background-color: #3498db; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-						+ "-fx-padding: 8 20 8 20; " + "-fx-background-radius: 5; " + "-fx-cursor: hand;"));
+	    Button backBtn = new Button("Back");
+	    backBtn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20 8 20; -fx-background-radius: 5; -fx-cursor: hand;");
+	    backBtn.setOnMouseEntered(e -> backBtn.setStyle("-fx-background-color: #2980b9; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20 8 20; -fx-background-radius: 5; -fx-cursor: hand;"));
+	    backBtn.setOnMouseExited(e -> backBtn.setStyle("-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20 8 20; -fx-background-radius: 5; -fx-cursor: hand;"));
 
-		backBtn.setOnAction(e -> showDashboard(stage));
+	    backBtn.setOnAction(e -> showDashboard(stage));
 
-		Button addTransaction = new Button("Add Transaction");
-		addTransaction.setStyle("-fx-background-color: #27ae60; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-				+ "-fx-padding: 8 20 8 20; " + "-fx-background-radius: 5; " + "-fx-cursor: hand;");
-		addTransaction.setOnMouseEntered(e -> addTransaction
-				.setStyle("-fx-background-color: #1e8449; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-						+ "-fx-padding: 8 20 8 20; " + "-fx-background-radius: 5; " + "-fx-cursor: hand;"));
-		addTransaction.setOnMouseExited(e -> addTransaction
-				.setStyle("-fx-background-color: #27ae60; " + "-fx-text-fill: white; " + "-fx-font-weight: bold; "
-						+ "-fx-padding: 8 20 8 20; " + "-fx-background-radius: 5; " + "-fx-cursor: hand;"));
+	    Button addTransaction = new Button("Add Transaction");
+	    addTransaction.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20 8 20; -fx-background-radius: 5; -fx-cursor: hand;");
+	    addTransaction.setOnMouseEntered(e -> addTransaction.setStyle("-fx-background-color: #1e8449; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20 8 20; -fx-background-radius: 5; -fx-cursor: hand;"));
+	    addTransaction.setOnMouseExited(e -> addTransaction.setStyle("-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 20 8 20; -fx-background-radius: 5; -fx-cursor: hand;"));
 
-		TransactionController c = new TransactionController();
-		addTransaction.setOnAction(e -> c.showAddTransactionForm(stage));
+	    TransactionController c = new TransactionController();
+	    addTransaction.setOnAction(e -> c.showAddTransactionForm(stage));
 
-		HBox buttonBox = new HBox(10, backBtn, addTransaction);
-		buttonBox.setPadding(new Insets(10));
-		buttonBox.setAlignment(Pos.CENTER_RIGHT);
+	    HBox buttonBox = new HBox(10, backBtn, addTransaction);
+	    buttonBox.setPadding(new Insets(10));
+	    buttonBox.setAlignment(Pos.CENTER_RIGHT);
 
-		VBox root = new VBox(10, tableView, buttonBox);
-		root.setPadding(new Insets(20));
-		root.setStyle("-fx-background-color: #f0f4f7; " + "-fx-border-radius: 10; " + "-fx-background-radius: 10;");
+	    // Wrap TableView inside a ScrollPane
+	    ScrollPane scrollPane = new ScrollPane(tableView);
+	    scrollPane.setFitToWidth(true);
+	    scrollPane.setFitToHeight(true);
 
-		stage.setScene(new Scene(root, 750, 450));
+	    VBox root = new VBox(10, scrollPane, buttonBox);
+	    root.setPadding(new Insets(20));
+	    root.setStyle("-fx-background-color: #f0f4f7; -fx-border-radius: 10; -fx-background-radius: 10;");
+
+	    stage.setScene(new Scene(root, 750, 450));
+	    stage.setTitle("Transactions");
+	    stage.show();
 	}
-   
+
 	/**
 	 * Clears the text fields provided.
 	 *

@@ -1,60 +1,48 @@
 package com.yourname.stockwise.dao;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.yourname.stockwise.model.Product;
 
-/**
- * Data Access Object (DAO) class for managing Product entities.
- * Provides methods to create, read, update, delete and batch save products
- * while maintaining an in-memory cache for fast access.
- * <p>
- * Requires the environment variable STOCKWISE_DB_PASSWORD for database authentication.
- * </p>
- * 
- * @author L Mahamba
- * @version 1.0
- */
 public class ProductDAO {
 
-    // Database connection constants
     private static final String DB_URL = "jdbc:mysql://localhost:3306/stockwise";
     private static final String DB_USER = "root";
-    private static final String DB_PASSWORD = System.getenv("STOCKWISE_DB_PASSWORD");
+    private static final String DB_PASSWORD;
 
-    // In-memory cache of products for faster access
+    static {
+        String pwd = System.getenv("STOCKWISE_DB_PASSWORD");
+        if (pwd == null || pwd.isEmpty()) {
+            pwd = System.getProperty("db.password");
+        }
+        if (pwd == null || pwd.isEmpty()) {
+            throw new RuntimeException("DB password environment variable or system property not set");
+        }
+        DB_PASSWORD = pwd;
+    }
+
     private final List<Product> products = new ArrayList<>();
 
-    /**
-     * Constructor that creates the products table if it does not exist,
-     * and loads all products from the database into the in-memory cache.
-     * Throws RuntimeException if the database password environment variable is not set.
-     */
     public ProductDAO() {
-        String password = System.getenv("STOCKWISE_DB_PASSWORD");
-        if (password == null) {
-            throw new RuntimeException("DB password environment variable not set");
-        }
-        final String DB_PASSWORD = password;
-
-        String sql = "CREATE TABLE IF NOT EXISTS products (" +
-                "id VARCHAR(50) PRIMARY KEY, " +
-                "name VARCHAR(255), " +
-                "quantity INT, " +
-                "threshold INT, " +
-                "unitPrice DOUBLE)";
-
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
              Statement stmt = conn.createStatement()) {
 
-            stmt.execute(sql);
+            String createSql = "CREATE TABLE IF NOT EXISTS products (" +
+                    "id VARCHAR(50) PRIMARY KEY, " +
+                    "name VARCHAR(255), " +
+                    "quantity INT, " +
+                    "threshold INT, " +
+                    "unit_price DOUBLE, " +
+                    "username VARCHAR(100), " +
+                    "created_at DATETIME DEFAULT CURRENT_TIMESTAMP" +
+                    ")";
+            stmt.execute(createSql);
+
+            migrateProductsTableIfNeeded(conn);
             loadProductsFromDB();
 
         } catch (SQLException e) {
@@ -62,12 +50,32 @@ public class ProductDAO {
         }
     }
 
-    /**
-     * Loads all products from the database into the in-memory cache.
-     */
+    private void migrateProductsTableIfNeeded(Connection conn) throws SQLException {
+        DatabaseMetaData meta = conn.getMetaData();
+        List<String> columns = new ArrayList<>();
+        try (ResultSet rs = meta.getColumns(null, null, "products", null)) {
+            while (rs.next()) {
+                columns.add(rs.getString("COLUMN_NAME").toLowerCase());
+            }
+        }
+
+        try (Statement stmt = conn.createStatement()) {
+            if (!columns.contains("username")) {
+                stmt.execute("ALTER TABLE products ADD COLUMN username VARCHAR(100)");
+            }
+            if (!columns.contains("unit_price")) {
+                stmt.execute("ALTER TABLE products ADD COLUMN unit_price DOUBLE");
+            }
+            if (!columns.contains("created_at")) {
+                stmt.execute("ALTER TABLE products ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP");
+            }
+        }
+    }
+
     public void loadProductsFromDB() {
         products.clear();
         String sql = "SELECT * FROM products";
+
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
@@ -78,7 +86,14 @@ public class ProductDAO {
                         rs.getString("name"),
                         rs.getInt("quantity"),
                         rs.getInt("threshold"),
-                        rs.getDouble("unitPrice"));
+                        rs.getDouble("unit_price"));
+                p.setUsername(rs.getString("username"));
+
+                Timestamp ts = rs.getTimestamp("created_at");
+                if (ts != null) {
+                    p.setDateAdded(ts.toLocalDateTime());
+                }
+
                 products.add(p);
             }
 
@@ -87,23 +102,12 @@ public class ProductDAO {
         }
     }
 
-    /**
-     * Returns a copy of the list of all products currently cached in memory.
-     *
-     * @return List of products
-     */
     public List<Product> getAllProducts() {
-        return new ArrayList<>(products); // Defensive copy to prevent modification
+        return new ArrayList<>(products);
     }
 
-    /**
-     * Adds a new product to the database and in-memory cache.
-     *
-     * @param product Product to add
-     * @return true if added successfully, false otherwise
-     */
     public boolean addProduct(Product product) {
-        String sql = "INSERT INTO products (id, name, quantity, threshold, unitPrice) VALUES (?, ?, ?, ?, ?)";
+        String sql = "INSERT INTO products (id, name, quantity, threshold, unit_price, username, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)";
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -112,10 +116,12 @@ public class ProductDAO {
             pstmt.setInt(3, product.getQuantity());
             pstmt.setInt(4, product.getThreshold());
             pstmt.setDouble(5, product.getUnitPrice());
+            pstmt.setString(6, product.getUsername());
+            pstmt.setTimestamp(7, Timestamp.valueOf(product.getDateAdded()));
 
             int rowsAffected = pstmt.executeUpdate();
             if (rowsAffected > 0) {
-                products.add(product); // Update cache
+                products.add(product);
                 return true;
             }
             return false;
@@ -126,14 +132,8 @@ public class ProductDAO {
         }
     }
 
-    /**
-     * Updates an existing product in the database and in-memory cache.
-     *
-     * @param product Product with updated fields
-     * @return true if update was successful, false otherwise
-     */
     public boolean updateProduct(Product product) {
-        String sql = "UPDATE products SET name=?, quantity=?, threshold=?, unitPrice=? WHERE id=?";
+        String sql = "UPDATE products SET name=?, quantity=?, threshold=?, unit_price=?, username=? WHERE id=?";
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
 
@@ -141,11 +141,11 @@ public class ProductDAO {
             pstmt.setInt(2, product.getQuantity());
             pstmt.setInt(3, product.getThreshold());
             pstmt.setDouble(4, product.getUnitPrice());
-            pstmt.setString(5, product.getId());
+            pstmt.setString(5, product.getUsername());
+            pstmt.setString(6, product.getId());
 
             int rows = pstmt.executeUpdate();
             if (rows > 0) {
-                // Update in-memory cache
                 for (int i = 0; i < products.size(); i++) {
                     if (products.get(i).getId().equals(product.getId())) {
                         products.set(i, product);
@@ -162,13 +162,9 @@ public class ProductDAO {
         }
     }
 
-    /**
-     * Saves all current in-memory products to the database.
-     * Performs inserts or updates depending on existence.
-     */
     public void saveAllToDatabase() {
-        String insertSql = "INSERT INTO products (id, name, quantity, threshold, unitPrice) VALUES (?, ?, ?, ?, ?)";
-        String updateSql = "UPDATE products SET name=?, quantity=?, threshold=?, unitPrice=? WHERE id=?";
+        String insertSql = "INSERT INTO products (id, name, quantity, threshold, unit_price, username, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String updateSql = "UPDATE products SET name=?, quantity=?, threshold=?, unit_price=?, username=? WHERE id=?";
 
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
             for (Product product : products) {
@@ -188,7 +184,8 @@ public class ProductDAO {
                         updateStmt.setInt(2, product.getQuantity());
                         updateStmt.setInt(3, product.getThreshold());
                         updateStmt.setDouble(4, product.getUnitPrice());
-                        updateStmt.setString(5, product.getId());
+                        updateStmt.setString(5, product.getUsername());
+                        updateStmt.setString(6, product.getId());
                         updateStmt.executeUpdate();
                     }
                 } else {
@@ -198,6 +195,8 @@ public class ProductDAO {
                         insertStmt.setInt(3, product.getQuantity());
                         insertStmt.setInt(4, product.getThreshold());
                         insertStmt.setDouble(5, product.getUnitPrice());
+                        insertStmt.setString(6, product.getUsername());
+                        insertStmt.setTimestamp(7, Timestamp.valueOf(product.getDateAdded()));
                         insertStmt.executeUpdate();
                     }
                 }
@@ -207,12 +206,6 @@ public class ProductDAO {
         }
     }
 
-    /**
-     * Deletes a product by its ID from the database and in-memory cache.
-     *
-     * @param productId ID of the product to delete
-     * @return true if deletion was successful, false otherwise
-     */
     public boolean deleteProduct(String productId) {
         String sql = "DELETE FROM products WHERE id=?";
         try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
@@ -232,13 +225,40 @@ public class ProductDAO {
         }
     }
 
-    /**
-     * Retrieves all products associated with a given username.
-     * Note: Assumes a "username" column exists in the products table.
-     *
-     * @param username Username to filter products by
-     * @return List of products belonging to the user
-     */
+    public List<Product> getProductsByDate(LocalDate date) {
+        List<Product> products = new ArrayList<>();
+        String sql = "SELECT * FROM products WHERE DATE(created_at) = ?";
+
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            pstmt.setDate(1, Date.valueOf(date));
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    Product product = new Product(
+                            rs.getString("id"),
+                            rs.getString("name"),
+                            rs.getInt("quantity"),
+                            rs.getInt("threshold"),
+                            rs.getDouble("unit_price"));
+                    product.setUsername(rs.getString("username"));
+
+                    Timestamp ts = rs.getTimestamp("created_at");
+                    if (ts != null) {
+                        product.setDateAdded(ts.toLocalDateTime());
+                    }
+
+                    products.add(product);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        return products;
+    }
+
     public List<Product> getProductsByUsername(String username) {
         List<Product> productList = new ArrayList<>();
         String sql = "SELECT * FROM products WHERE username = ?";
@@ -254,8 +274,14 @@ public class ProductDAO {
                             rs.getString("name"),
                             rs.getInt("quantity"),
                             rs.getInt("threshold"),
-                            rs.getDouble("unit_price")); // note column name: unit_price here
+                            rs.getDouble("unit_price"));
                     product.setUsername(rs.getString("username"));
+
+                    Timestamp ts = rs.getTimestamp("created_at");
+                    if (ts != null) {
+                        product.setDateAdded(ts.toLocalDateTime());
+                    }
+
                     productList.add(product);
                 }
             }

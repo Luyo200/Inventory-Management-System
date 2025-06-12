@@ -12,21 +12,13 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
-/**
- * Controller class to manage supplier-related UI interactions.
- * Displays a form for adding new suppliers and handles form submission.
- */
+import java.time.LocalDateTime;
+
 public class SupplierController {
 
     private final SupplierDAO supplierDAO = new SupplierDAO();
     private final InventoryApp app = new InventoryApp();
 
-    /**
-     * Shows the Add Supplier form on the given Stage.
-     * Handles input validation, saving, and navigation.
-     * 
-     * @param stage The JavaFX Stage to display the form on.
-     */
     public void showAddSupplierForm(Stage stage) {
         Label title = new Label("Add New Supplier");
         title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #34495e;");
@@ -51,13 +43,20 @@ public class SupplierController {
         addressField.setPromptText("Address");
         styleTextField(addressField);
 
+        // 👇 Add date label
+        Label dateLabel = new Label("Date Added: " + LocalDateTime.now());
+        dateLabel.setStyle("-fx-text-fill: #555; -fx-font-style: italic;");
+
         Label statusLabel = new Label();
         statusLabel.setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;");
 
         Button saveBtn = new Button("Save");
         Button cancelBtn = new Button("Back");
-        styleButton(saveBtn, "#27ae60", "#1e8449"); // green colors
-        styleButton(cancelBtn, "#2980b9", "#1c5980"); // blue colors
+        styleButton(saveBtn, "#27ae60", "#1e8449");
+        styleButton(cancelBtn, "#2980b9", "#1c5980");
+
+        // 👉 Store createdAt date so it remains constant between open and save
+        final LocalDateTime createdAt = LocalDateTime.now();
 
         saveBtn.setOnAction(e -> {
             boolean confirmed = AlertHelper.showConfirmation("Confirm Save",
@@ -74,12 +73,13 @@ public class SupplierController {
                         nameField.getText().trim(),
                         emailField.getText().trim(),
                         phoneField.getText().trim(),
-                        addressField.getText().trim()
+                        addressField.getText().trim(),
+                        createdAt // ✅ Use the stored timestamp
                 );
 
                 boolean success = supplierDAO.addSupplier(supplier);
                 if (success) {
-                    statusLabel.setStyle("-fx-text-fill: #27ae60; -fx-font-weight: bold;"); // green text on success
+                    statusLabel.setStyle("-fx-text-fill: #27ae60; -fx-font-weight: bold;");
                     statusLabel.setText("Supplier added successfully!");
                     app.clearFields(idField, nameField, emailField, phoneField, addressField);
                 } else {
@@ -102,17 +102,16 @@ public class SupplierController {
             }
         });
 
-        VBox form = new VBox(15, title, idField, nameField, emailField, phoneField, addressField, saveBtn, cancelBtn,
-                statusLabel);
+        VBox form = new VBox(15, title, idField, nameField, emailField, phoneField, addressField,
+                dateLabel, saveBtn, cancelBtn, statusLabel);
         form.setStyle("-fx-padding: 25; "
-                + "-fx-background-color: #d9f0d9; " // pastel green background
+                + "-fx-background-color: #d9f0d9; "
                 + "-fx-border-radius: 12; "
                 + "-fx-background-radius: 12;");
 
-        stage.setScene(new Scene(form, 420, 480));
+        stage.setScene(new Scene(form, 420, 500));
     }
 
-    // Validates mandatory input fields; shows error in statusLabel if invalid
     private boolean validateInputs(TextField idField, TextField nameField, Label statusLabel) {
         if (idField.getText().isBlank() || nameField.getText().isBlank()) {
             statusLabel.setStyle("-fx-text-fill: #e74c3c; -fx-font-weight: bold;");
@@ -122,16 +121,14 @@ public class SupplierController {
         return true;
     }
 
-    // Helper method to style text fields uniformly
     private void styleTextField(TextField tf) {
         tf.setStyle("-fx-padding: 8 10 8 10; " +
                 "-fx-background-radius: 5; " +
                 "-fx-border-radius: 5; " +
-                "-fx-border-color: #bdc3c7; " + // light gray border
+                "-fx-border-color: #bdc3c7; " +
                 "-fx-font-size: 14px;");
     }
 
-    // Helper method to style buttons uniformly with hover effect
     private void styleButton(Button btn, String baseColor, String hoverColor) {
         btn.setStyle("-fx-background-color: " + baseColor + "; " +
                 "-fx-text-fill: white; " +
